@@ -25,13 +25,13 @@
 #define MAXINPUTSIZE	1024*1024*1024
 
 /* Status Id */
-#define	SCC_STATUS_LOADED					1		// юШюГ╣й ╩Себ
-#define	SCC_STATUS_SELFTEST					2		// юЭ©Ьюн╟║ юз╟║╫цгХ ╩Себ
-#define	SCC_STATUS_SELFTESTCASE				3		// а╤╟г╨н юз╟║╫цгХ ╩Себ
-#define	SCC_STATUS_KCMVP					4		// ╟каУ╢К╩С╣©юш╦П╣Е/╬охё©Н©╣ ╩Себ
-#define	SCC_STATUS_ERROR					5		// ╢э╪Ь©ю╥Ы ╩Себ
-#define	SCC_STATUS_CRITICAL_ERROR			6		// ╫и╟╒гя ©ю╥Ы ╩Себ
-#define	SCC_STATUS_FINALIZED				7		// ╦П╣Б а╬╥А ╩Себ
+#define	SCC_STATUS_LOADED					1		// Л═│Л·╛К░╗ Л┐│М┐°
+#define	SCC_STATUS_SELFTEST					2		// К▐≥Л·▒ Л═└ Л·░Й╟─Л▀°М≈≤
+#define	SCC_STATUS_SELFTESTCASE				3		// ц│б╤б╟ц┤б╨ц▌ ц─ц б╟б║б╫ц┐ц┤ц╗ б╩цЁц┘ц┌
+#define	SCC_STATUS_KCMVP					4		// Й╡─Л╕²К▄─Л┐│ К▐≥Л·▒ Л┐│М┐°
+#define	SCC_STATUS_ERROR					5		// б╢ц°б╪ц╦б©ц─б╥ц╧ б╩цЁц┘ц┌
+#define	SCC_STATUS_CRITICAL_ERROR			6		// б╫ц┴б╟б╒ц┤ц▒ б©ц─б╥ц╧ б╩цЁц┘ц┌
+#define	SCC_STATUS_FINALIZED				7		// б╦ц╟б╣ц╒ ц│б╬б╥ц║ б╩цЁц┘ц┌
 
 // key
 #define SCC_KEY_ID_ARIA					12

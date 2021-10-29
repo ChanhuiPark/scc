@@ -9,6 +9,7 @@
 ========================================
 */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "scc_cipher.h"
@@ -65,6 +66,12 @@ SC_SKEY_SecretKey_Free(SC_SKEY_SecretKey *key)
 
 	return;
 }
+
+/*
+*
+* !new : 동적할당 함수
+*
+*/
 
 SC_CIPHER_CTX *
 SC_CIPHER_CTX_New(void)
@@ -140,13 +147,11 @@ SC_Cipher_Encrypt_Init(SC_CIPHER_CTX *ctx, const SC_SKEY_SecretKey *key, const i
 	switch(cipherID){
 		case SCC_CIPHER_ID_ARIA:
 			retCode = SC_ARIA_Encrypt_Init(&ctx->cipherKey.aria, key->key, key->keyLength, param->modeParam.iv, param->modeParam.ivLength, param->modeID, param->paddingID);
-			if(retCode < 0) {
+			if(retCode < 0)
 				goto end;
-			}
 			ctx->cipherID = cipherID;
-			
 			break;
-
+			
 		default:
 			return SCC_CIPHER_ERROR_UNKNOWN_ID;
 
@@ -204,15 +209,20 @@ end:
 	return retCode;
 }
 
-
-
 int 
 SC_Cipher_Encrypt(U8 *output, U32 *outputLength, const U8 *input, const U32 inputLength, const SC_SKEY_SecretKey *key, const int cipherID, const SC_CIPHER_PARAM *param)
 {
 	int retCode = 0;
 
-	if(key == NULL || param == NULL || input == NULL || inputLength == 0 ) {
-		return SCC_COMMON_ERROR_INVALID_INPUT;
+	if (param != NULL) {
+		if (key == NULL ) {
+			return SCC_COMMON_ERROR_INVALID_INPUT;
+		}
+	}
+	else {
+		if (key == NULL || param == NULL || input == NULL || inputLength == 0) {
+			return SCC_COMMON_ERROR_INVALID_INPUT;
+		}
 	}
 
 	retCode = SC_Cipher_CheckModeID(param->modeID);
@@ -222,20 +232,18 @@ SC_Cipher_Encrypt(U8 *output, U32 *outputLength, const U8 *input, const U32 inpu
 	retCode = SC_Cipher_CheckPaddingID(param->paddingID);
 	if (retCode < 0)
 		goto end;
-
+	
 	switch(cipherID) {
-		case SCC_CIPHER_ID_ARIA:
+		case SCC_CIPHER_ID_ARIA: 
 			retCode = SC_ARIA_Encrypt(output, outputLength, input, inputLength, key->key, key->keyLength, param->modeParam.iv, param->modeParam.ivLength, param->modeID, param->paddingID);
-			if(retCode < 0) goto end;
-			break;
 
+			if(retCode < 0) goto end;
+					break;
 		default:
 			return SCC_CIPHER_ERROR_UNKNOWN_ID;
 	}
-
 end:
 	return retCode;
-
 }
 
 int 
@@ -323,8 +331,15 @@ SC_Cipher_Decrypt(U8 *output, U32 *outputLength, const U8 *input, const U32 inpu
 {
 	int retCode = 0;
 
-	if(key == NULL || param == NULL || input == NULL || inputLength == 0 ) {
-		return SCC_COMMON_ERROR_INVALID_INPUT;
+	if (param != NULL) {
+		if (key == NULL ) {
+			return SCC_COMMON_ERROR_INVALID_INPUT;
+		}
+	}
+	else {
+		if(key == NULL || param == NULL || input == NULL || inputLength == 0) {
+			return SCC_COMMON_ERROR_INVALID_INPUT;
+		}
 	}
 
 	retCode = SC_Cipher_CheckModeID(param->modeID);
@@ -340,7 +355,6 @@ SC_Cipher_Decrypt(U8 *output, U32 *outputLength, const U8 *input, const U32 inpu
 			retCode = SC_ARIA_Decrypt(output, outputLength, input, inputLength, key->key, key->keyLength, param->modeParam.iv, param->modeParam.ivLength, param->modeID, param->paddingID);
 			if(retCode < 0) goto end;
 			break;
-
 		default:
 			return SCC_CIPHER_ERROR_UNKNOWN_ID;
 	}

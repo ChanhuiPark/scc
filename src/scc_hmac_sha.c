@@ -32,7 +32,7 @@ int SC_HMAC_SHA256_Init(SC_HMAC_SHA256_CTX *ctx, const U8 *key,
 		goto end;
 	}
 
-	if (keySize == 0){
+	if (keySize < SCC_SHA256_DIGEST_SIZE){
 		retCode = SCC_HMACSHA256_ERROR_INVALID_INPUTLEN;
 		goto end;
 	}
@@ -70,8 +70,7 @@ int SC_HMAC_SHA256_Init(SC_HMAC_SHA256_CTX *ctx, const U8 *key,
     retCode = SC_SHA256_Init(&ctx->ctxOutside);
 	if (retCode != 0) goto end;
 
-    retCode = SC_SHA256_Update(&ctx->ctxOutside, ctx->blockOpad,
-                  SCC_SHA256_BLOCK_SIZE);
+    retCode = SC_SHA256_Update(&ctx->ctxOutside, ctx->blockOpad, SCC_SHA256_BLOCK_SIZE);
 	if (retCode != 0) goto end;
 
 	retCode = 0;
@@ -95,7 +94,7 @@ int SC_HMAC_SHA256_Update(SC_HMAC_SHA256_CTX *ctx, const U8 *message,
 		goto end;
 	}
 
-	if (messageLength == 0 || messageLength > MAXINPUTSIZE){
+	if (messageLength < 0 || messageLength > MAXINPUTSIZE){
 		retCode = SCC_HMACSHA256_ERROR_INVALID_INPUTLEN;
 		goto end;
 	}
@@ -140,7 +139,6 @@ int SC_HMAC_SHA256_Final(SC_HMAC_SHA256_CTX *ctx, U8 *mac,
 
 	retCode = 0;
 end:
-	// 키 제로화
 	SC_Memzero(ctx, 0x00, sizeof(SC_HMAC_SHA256_CTX));
 
 	return retCode;
@@ -152,11 +150,6 @@ int SC_HMAC_SHA256(U8 *mac, U32 *macLength,
 {
     SC_HMAC_SHA256_CTX ctx;
 	int retCode;
-
-	if (messageLength == 0 || messageLength > MAXINPUTSIZE){
-		retCode = SCC_HMACSHA256_ERROR_INVALID_INPUTLEN;
-		goto end;
-	}
 
     retCode = SC_HMAC_SHA256_Init(&ctx, key, keySize);
 	if (retCode != 0) goto end;
@@ -192,7 +185,7 @@ int SC_HMAC_SHA512_Init(SC_HMAC_SHA512_CTX *ctx, const U8 *key,
 		goto end;
 	}
 
-	if (keySize == 0){
+	if (keySize < SCC_SHA512_DIGEST_SIZE){
 		retCode = SCC_HMACSHA512_ERROR_INVALID_INPUTLEN;
 		goto end;
 	}
@@ -230,13 +223,11 @@ int SC_HMAC_SHA512_Init(SC_HMAC_SHA512_CTX *ctx, const U8 *key,
 
     retCode = SC_SHA512_Init(&ctx->ctxOutside);
 	if (retCode != 0) goto end;
-    retCode = SC_SHA512_Update(&ctx->ctxOutside, ctx->blockOpad,
-                  SCC_SHA512_BLOCK_SIZE);
+    retCode = SC_SHA512_Update(&ctx->ctxOutside, ctx->blockOpad, SCC_SHA512_BLOCK_SIZE);
 	if (retCode != 0) goto end;
 
 	retCode = 0;
 end:
-	
 	// 키 제로화
 	if(retCode < 0)
 		SC_Memzero(ctx, 0x00, sizeof(SC_HMAC_SHA512_CTX));
@@ -254,7 +245,7 @@ int SC_HMAC_SHA512_Update(SC_HMAC_SHA512_CTX *ctx, const U8 *message,
 		goto end;
 	}
 
-	if (messageLength == 0 || messageLength > MAXINPUTSIZE){
+	if (messageLength < 0 || messageLength > MAXINPUTSIZE){
 		retCode = SCC_HMACSHA512_ERROR_INVALID_INPUTLEN;
 		goto end;
 	}
@@ -295,7 +286,8 @@ int SC_HMAC_SHA512_Final(SC_HMAC_SHA512_CTX *ctx, U8 *mac,
 
 end:
 	// 키 제로화
-	SC_Memzero(ctx, 0x00, sizeof(SC_HMAC_SHA512_CTX));
+	if(retCode < 0)
+		SC_Memzero(ctx, 0x00, sizeof(SC_HMAC_SHA512_CTX));
 
 	return retCode;
 }
@@ -306,12 +298,6 @@ int SC_HMAC_SHA512(U8 *mac, U32 *macLength,
 {
     SC_HMAC_SHA512_CTX ctx;
 	int retCode; 
-
-	// 입력길이 제한
-	if (messageLength == 0 || messageLength > MAXINPUTSIZE){
-		retCode = SCC_HMACSHA512_ERROR_INVALID_INPUTLEN;
-		goto end;
-	}
 
     retCode = SC_HMAC_SHA512_Init(&ctx, key, keySize);
 	if (retCode != 0) goto end;

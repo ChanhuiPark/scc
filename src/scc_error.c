@@ -44,7 +44,7 @@ SC_GetErrorString(const int errorCode)
 	case SCC_SELFTEST_ERROR_INTEGRITY:					return "Integrity failed";
 
 	// SCMAIN 100~
-	case SCC_MAIN_ERROR_NOT_IMPLEMENTED :			return "crypto function is not implemented";
+	case SCC_MAIN_ERROR_NOT_IMPLEMENTED :				return "crypto function is not implemented";
 	case SCC_MAIN_ERROR_SELFTESTCASE_FAILED:		return "SelfTestCase failed ";
 	
 	// SCCMVP 120~ 
@@ -128,7 +128,6 @@ SC_GetErrorString(const int errorCode)
 	
 	// SCENTROPY 400~
 	case SCC_ENTROPY_ERROR_BAD_INPUT_DATA:		return "Bad Entropy Input Data";
-	case SCC_ENTROPY_ERROR_INVALID_PADDING:		return "Invalid Entropy Padding";
 
 	// SCHASHDRBG 500~
 	case SCC_HASHDRBG_ERROR_INVALID_INPUT:		return "Invalid Hash DRBG Input";

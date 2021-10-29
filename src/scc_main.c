@@ -28,11 +28,7 @@
 #include "scc_pkey.h"
 #include "scc_random.h"
 
-// for test
-#include <crtdbg.h>
-#include <malloc.h>
-
-#define	SC_CRYPTO_VERSION					"1.0.0.0"
+#define	SC_CRYPTO_VERSION					"SCCrypto V1.0"
 
 
 /**
@@ -166,9 +162,8 @@ end:
 
 int 
 SCC_CM_SelfTest(void)
-{
+{	
 	int retCode = 0;
-
 	retCode = SC_CMVP_Status_CheckState();
 	if(retCode < 0) 
 		return retCode;
@@ -205,7 +200,7 @@ int
 SCC_SKEY_GenerateKey(SC_SKEY_SecretKey *key, const int keyID, const U32 keyLength)
 {
 	int retCode = 0;
-		
+
 	retCode = SC_CMVP_Status_CheckState();
 	if(retCode < 0) 
 		return retCode;
@@ -442,7 +437,7 @@ end:
 int 
 SCC_HASH(U8 *hash, U32 *hashLength, U8 *input, U32 inputLength, const int hashID)
 {
-	int retCode = 100;
+	int retCode = 0;
 
 	retCode = SC_CMVP_Status_CheckHashID(hashID);
 	if(retCode < 0) goto end;
@@ -706,6 +701,26 @@ SCC_PKEY_PublicKey_FromBinary(SC_PKEY_PublicKey *pubKey,
 	if(retCode < 0) goto end;
 
 	retCode = SC_PKEY_PublicKey_FromBinary(pubKey, pkeyID, input, inputLength, params);
+	if(retCode < 0) goto end;
+
+end:
+	if (retCode < 0)
+		SC_CMVP_MoveStatus(SCC_STATUS_ERROR);
+
+	return retCode;
+}
+
+int 
+SCC_PKEY_CheckKeyPair(SC_PKEY_PrivateKey *privKey, 
+					  SC_PKEY_PublicKey *pubKey, 
+					  const int pkeyID)
+{
+	int retCode = 0;
+
+	retCode = SC_CMVP_Status_CheckPkeyID(pkeyID);
+	if(retCode < 0) goto end;
+
+	retCode = SC_PKEY_CheckKeyPair(privKey, pubKey, pkeyID);
 	if(retCode < 0) goto end;
 
 end:

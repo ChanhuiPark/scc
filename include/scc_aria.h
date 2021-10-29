@@ -27,9 +27,6 @@
 #define	SC_ARIA_MAX_BLOCK_SIZE			    16	
 #define	SC_ARIA_MAX_IV_SIZE				    16	
 
-#define	SC_ARIA_MAX_KEY_SIZE				32		// 256 bits, U8s Block
-#define	SC_ARIA_MIN_KEY_SIZE				16		// 128 bits, U8s Block
-
 /* structure */
 typedef struct {
 	int			modeID;
@@ -120,8 +117,8 @@ SC_ARIA_Decrypt_Update(SC_ARIA_CONTEXT *ctx,
 					   const U32 inputLength);
 
 int
-SC_ARIA_Decrypt_Final(SC_ARIA_CONTEXT *ctx, 
-					  U32 *paddingLength);
+SC_ARIA_Decrypt_Final(SC_ARIA_CONTEXT *ctx,
+					U32 *paddingLength);
 
 int
 SC_ARIA_Decrypt(U8 *output, 
@@ -134,7 +131,6 @@ SC_ARIA_Decrypt(U8 *output,
 				const U32 ivLength,
 				const int modeID, 
 				const int paddingID);
-
 
 #ifdef __cplusplus
 }

@@ -20,6 +20,7 @@
 #include "scc_util.h"
 #include "scc_malloc.h"
 
+#include <stdio.h>
 static 
 int 
 SC_Hash_Df(U8 *output, U32 *outputLen, U8 *seed, U32 seedLen)
@@ -117,19 +118,33 @@ int SC_HashDRBG_Reseed(SC_HashDRBG_CONTEXT *ctx, const U8 *addInput, const U32 a
 
 	// for selftest
 	if (SC_CMVP_GetStatus() == SCC_STATUS_SELFTEST) {
-		extern U8 _entropy2[55];
-		memcpy(entropy.data, _entropy2, 55);
-		entropy.dataLength = 55;
-		entropy.pos = 55;
+		extern U8 _entropy2[32];
+		memcpy(entropy.data, _entropy2, 32);
+		entropy.dataLength = 32;
+		entropy.pos = 32;
 	}
 	else {
 		retCode = SC_Entropy_Accumulate(&entropy);	
 		if (retCode != 0) goto end;
+		if (entropy.dataLength != SC_ENTROPY_MAX_DATA_LENGTH)
+		{
+			retCode = SCC_HASHDRBG_ERROR_INVALID_INPUTLEN;
+			goto end;
+
+		}
+	}
+
+
+	if (addInputLen > SC_HashDRBG_MATERIAL_MAX_SIZE/8 || addInputLen < 112/8 )
+	{
+		retCode = SCC_HASHDRBG_ERROR_INVALID_INPUTLEN;
+		goto end;
 	}
 
 	pos =0;
 
 	seedMaterial[pos++] = 0x01;
+
 
 	//concate
 	if((addInputLen) <= SC_HashDRBG_MATERIAL_MAX_SIZE){
@@ -215,6 +230,11 @@ int SC_HashDRBG_Hashgen(U8 *output, const U32 lengthInBits, const U8 *input, con
 	
 	m = (lengthInBits / 8)  / SCC_SHA256_DIGEST_SIZE;
     data = (U8 *)sc_malloc(inputLen);
+	if (data == NULL)
+	{
+		retCode = SCC_COMMON_ERROR_MALLOC_FAILED;
+		goto end;
+	}
 	dataLen = inputLen;
 
 	memcpy (data, input, inputLen);
@@ -268,24 +288,28 @@ int SC_HashDRBG_Init( SC_HashDRBG_CONTEXT *ctx, U8 *personalStr, U32 personalStr
 		goto end;
 	}
 
-	//if(nonceLen == 0) {
-		//retCode = SCC_HASHDRBG_ERROR_INVALID_INPUTLEN;
-		//goto end;
-	//}
-	
+	if (personalStrLen + nonceLen > SC_HashDRBG_MATERIAL_MAX_SIZE)
+	{
+		retCode = SCC_HASHDRBG_ERROR_INVALID_INPUTLEN;
+		goto end;
+	}
+
 	SC_Memzero(&entropy, 0, sizeof(SC_ENTROPY_CTX));
 
 	// for selftest
 	if (SC_CMVP_GetStatus() == SCC_STATUS_SELFTEST) {
-		extern U8 _entropy1[55];
-		memcpy(entropy.data, _entropy1, 55);
-		entropy.dataLength = 55;
-		entropy.pos = 55;
+		extern U8 _entropy1[32];
+		memcpy(entropy.data, _entropy1, 32);
+		entropy.dataLength = 32;
+		entropy.pos = 32;
 	}
 
 	else {
  		retCode = SC_Entropy_Accumulate(&entropy);	
 		if (retCode != 0) goto end;
+
+		if (entropy.dataLength != SC_ENTROPY_MAX_DATA_LENGTH)
+			goto end;
 	}
 
 	pos =0;  
@@ -298,9 +322,6 @@ int SC_HashDRBG_Init( SC_HashDRBG_CONTEXT *ctx, U8 *personalStr, U32 personalStr
 		pos += nonceLen;
 		memcpy(seedMaterial + pos, personalStr, personalStrLen);
 		pos += personalStrLen;
-	}else{
-		retCode = SCC_HASHDRBG_ERROR_INVALID_INPUTLEN;
-		goto end;
 	}
 
     retCode = SC_Hash_Df (dfBuf, &dfBufLen, seedMaterial, pos);
@@ -358,12 +379,6 @@ SC_HashDRBG_Generate(SC_HashDRBG_CONTEXT *ctx, U8 *output, const U32 outputLen, 
 		goto end;
 	}
 
-	//if (predictionResistant == 1)
-	//{   
-	//	SC_HashDRBG_Reseed(ctx, addInput, addInputLen);
-	//	addInput = NULL;
-	//}
-
 	if (addInput != NULL)
 	{
 		newInputLen = 1 + ctx->vLen + addInputLen;
@@ -395,8 +410,7 @@ SC_HashDRBG_Generate(SC_HashDRBG_CONTEXT *ctx, U8 *output, const U32 outputLen, 
 		retCode = SCC_HASHDRBG_ERROR_INVALID_LIMITREQ;
 		goto end;
 	}
-
-
+	
  	retCode = SC_HashDRBG_Hashgen(rvOutput, numberOfBits, ctx->V, ctx->vLen);
 	if(retCode != 0) goto end;
 

@@ -37,32 +37,7 @@ static U32	g_cmvp_rand_compare_init = 0;
 static U8	g_cmvp_rand_compare[SC_HashDRBG_SEED_LEN];
 static U32	g_cmvp_rand_compare_len;
 
-#ifdef _DEBUG
-char * _get_state_str(int state) {
-	char *str;
 
-	switch(state) {
-	case SCC_STATUS_LOADED:
-		str = "SCC_STATUS_LOADED";break;
-	case SCC_STATUS_SELFTEST:
-		str = "SCC_STATUS_SELFTEST";break;
-	case SCC_STATUS_SELFTESTCASE:
-		str = "SCC_STATUS_SELFTESTCASE";break;
-	case SCC_STATUS_KCMVP:
-		str = "SCC_STATUS_KCMVP";break;
-	case SCC_STATUS_ERROR:
-		str = "SCC_STATUS_ERROR";break;
-	case SCC_STATUS_CRITICAL_ERROR:
-		str = "SCC_STATUS_CRITICAL_ERROR";break;
-	case SCC_STATUS_FINALIZED:
-		str = "SCC_STATUS_FINALIZED";break;
-	default:
-		str = "Unknown State";
-	}
-	
-	return str;
-}
-#endif
 
 /**
  *
@@ -73,10 +48,6 @@ int
 SC_CMVP_MoveStatus(const int stateID)
 {
 	int	retCode = 0;
-
-#ifdef _DEBUG
-	printf("상태변경 %s -> %s\n\n", _get_state_str(g_cmvp_status_id), _get_state_str(stateID));
-#endif
 
 	switch (g_cmvp_status_id) {
 	// 현재 상태가 적재됨일때
@@ -99,7 +70,7 @@ SC_CMVP_MoveStatus(const int stateID)
 		}
 		break;
 
-	// 현재 상태가 전원인가/조건부 자가시험일때
+	// 현재 상태가 동작 전 자가시험, 조건부 자가시험, 주기적 자가시험 일때
 	case SCC_STATUS_SELFTEST :
 	case SCC_STATUS_SELFTESTCASE :
 		switch (stateID) {
@@ -119,7 +90,7 @@ SC_CMVP_MoveStatus(const int stateID)
 		}
 		break;
 
-	// 현재 상태가 승인모드/암호운영일때
+	// 현재 상태가 검증대상 동작모드 일때
 	case SCC_STATUS_KCMVP :
 		switch (stateID) {
 		case SCC_STATUS_KCMVP :
@@ -132,7 +103,7 @@ SC_CMVP_MoveStatus(const int stateID)
 		case SCC_STATUS_LOADED :
 			retCode = SCC_CMVP_ERROR_STATE_NOT_ALLOWED;
 			goto end;
-		// 현재 상태가 승인모드에서 단순오류가 발생하면 승인모드로 복구시킨다
+		// 현재 상태가 검증대상동작모드에서 단순오류가 발생하면 검즈앧상동작모드로 복구시킨다
 		case SCC_STATUS_ERROR :	
 			g_cmvp_status_id = SCC_STATUS_KCMVP;
 			break;
@@ -196,7 +167,7 @@ SC_CMVP_Status_init(void)
 		if (retCode != 0) {
 			// 자가시험 실패할 경우 심각한 오류상태 진입
 			SC_CMVP_MoveStatus(SCC_STATUS_CRITICAL_ERROR);
-			//retCode = SCC_CMVP_ERROR_SELFTEST_FAILED;
+			retCode = SCC_CMVP_ERROR_SELFTEST_FAILED;
 			goto end;
 		}
 		retCode = SC_CMVP_MoveStatus(SCC_STATUS_KCMVP);
@@ -388,7 +359,7 @@ SC_Status_CheckAlgID(const int algID,
 
 	switch (g_cmvp_status_id) {
 	case SCC_STATUS_KCMVP :
-		// KCMVP 상태인지 체크
+		// 검증대상동작모드상태인지 체크
 		if (CB_KCMVP_CheckAlgID != NULL) {
 			retCode = (CB_KCMVP_CheckAlgID)(algID);
 			if (retCode != 0) goto end;
@@ -547,32 +518,24 @@ SC_CMVP_RAND_GetRandom(U8 *output,
 	U8		buffer[SC_HashDRBG_SEED_LEN+1];
 	int		retCode;
 	U32		len = 0;
-	U32		bufferLength = 0;
 
 	if (!g_cmvp_rand_init)
 		SC_CMVP_RAND_Init();
-	
-	
+		
 	if (!g_cmvp_rand_compare_init) {
 		// generate random block
 		retCode = SC_HashDRBG_Generate(&g_cmvp_rand_ctx, buffer, 20, NULL, 0, 0); 
 		if (retCode != 0)
 			goto end;
-
+	
 		// 최초에는 비교할 난수값을 20바이트 생성
 		memcpy(g_cmvp_rand_compare, buffer, 20);
 		g_cmvp_rand_compare_len = 20;
 		g_cmvp_rand_compare_init = 1;
 	}
-		
-	// 난수값 생성 (20바이트보다 작은 요청에는 20바이트 생성후 요청길이만큼 복사하여 사용)
-	if(outputLength < 20) {
-		SC_HashDRBG_Generate(&g_cmvp_rand_ctx, buffer, 20, NULL, 0, 0);
-		bufferLength = 20;
-	}else {
-		SC_HashDRBG_Generate(&g_cmvp_rand_ctx, buffer, outputLength, NULL, 0, 0); 
-		bufferLength = outputLength;
-	}
+	
+	// generate random block
+	SC_HashDRBG_Generate(&g_cmvp_rand_ctx, buffer, outputLength, NULL, 0, 0); 
 		
 	if(g_cmvp_status_id == SCC_STATUS_KCMVP) {
 		retCode = SC_CMVP_MoveStatus(SCC_STATUS_SELFTESTCASE);
@@ -581,12 +544,13 @@ SC_CMVP_RAND_GetRandom(U8 *output,
 
 	// 조건부 자가시험 : 연속적 난수발생기 시험
 	// 생성된 난수와 이전 난수를 비교하여 다르면 복사
-	// 이전 난수 길이와 요청 난수 길이 중 짧은 길이를 비교 (요청 난수 길이가 20바이트보다 작은 경우는 20바이트)
-	len = (bufferLength >= g_cmvp_rand_compare_len) ? g_cmvp_rand_compare_len : bufferLength;
+	// 이전 난수 길이와 요청 난수 길이 중 짧은 길이를 비교
+	
+	len = (outputLength >= g_cmvp_rand_compare_len) ? g_cmvp_rand_compare_len : outputLength;
 	if (memcmp(g_cmvp_rand_compare, buffer, len) != 0) {
 		// 성공하면 요청난수값 저장
-		memcpy(g_cmvp_rand_compare, buffer, bufferLength);
-		g_cmvp_rand_compare_len = bufferLength;
+		memcpy(g_cmvp_rand_compare, buffer, outputLength);
+		g_cmvp_rand_compare_len = outputLength;
 	}
 	else {
 		SC_CMVP_MoveStatus(SCC_STATUS_CRITICAL_ERROR);
@@ -602,7 +566,6 @@ SC_CMVP_RAND_GetRandom(U8 *output,
 	// 리씨드카운터 요청출력길이 만큼 증가시킨 후
 	// 리씨드카운터가 100000 초과 되면 
 	// 외부갱신 함수 호출
-	//g_cmvp_rand_ctx.reseedCounter++;
 	if (g_cmvp_rand_ctx.reseedCounter > 100000) {
 		SC_HashDRBG_Reseed(&g_cmvp_rand_ctx, NULL, 0);
 	}

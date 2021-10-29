@@ -14,7 +14,7 @@
 #include "scc_protocol.h"
 
 /* constants */
-#define	SC_ENTROPY_MAX_DATA_LENGTH			512	// U8
+#define	SC_ENTROPY_MAX_DATA_LENGTH			396	// U8
 #define SC_ENTROPY_PERIOD 100000
 
 /* structure */

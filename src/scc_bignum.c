@@ -270,7 +270,6 @@ int SC_Bigint_Lset( SC_BIGINT *X, int z )
     X->s    = ( z < 0 ) ? -1 : 1;
 
 end:
-
     return( retCode );
 }
 
@@ -425,14 +424,8 @@ int SC_Bigint_Read_String( SC_BIGINT *X, int radix, const char *s )
             SC_BIGINT_CHK( SCC_Get_Digit( &d, radix, s[i] ) );
             SC_BIGINT_CHK( SC_Bigint_Mul_Int( &T, X, radix ) );
 
-            //if( X->s == 1 )
-            //{
-                SC_BIGINT_CHK( SC_Bigint_Add_Int( X, &T, d ) );
-            //}
-            //else
-            //{
-                SC_BIGINT_CHK( SC_Bigint_Sub_Int( X, &T, d ) );
-            //}
+            SC_BIGINT_CHK( SC_Bigint_Add_Int( X, &T, d ) );
+            SC_BIGINT_CHK( SC_Bigint_Sub_Int( X, &T, d ) );
         }
     }
 

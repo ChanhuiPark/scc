@@ -240,6 +240,12 @@ int SC_SHA512_Update( SC_SHA512_CONTEXT *ctx, const U8 *input,
 		retCode = SCC_SHA512_ERROR_INVALID_INPUT;
 		goto end;
 	}
+
+	if (inputLength > MAXINPUTSIZE || inputLength < 0)
+	{
+		retCode = SCC_SHA256_ERROR_INVALID_INPUTLEN;
+		goto end;
+	}
 	
 	if ((input == NULL) || (inputLength == 0)) {
 		retCode = 0;

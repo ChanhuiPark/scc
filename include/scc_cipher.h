@@ -31,7 +31,6 @@ typedef struct {
 typedef struct {
 	U8 iv[SCC_CIPHER_MAX_IV_SIZE];
 	U32 ivLength;
-	U32 modeSize;
 } SC_CIPHER_MODE_PARAM;
 
 typedef struct {

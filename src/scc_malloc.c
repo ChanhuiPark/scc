@@ -20,7 +20,8 @@ void *sc_calloc(unsigned int size, unsigned int count)
 	return calloc(size, count);
 }
 
-void sc_free(void *p)
+void sc_free(volatile void *p)
 {
-	free(p);
+	free((void *)p);
+	p = NULL;
 }

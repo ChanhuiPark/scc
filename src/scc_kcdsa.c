@@ -22,46 +22,6 @@
 #include "scc_cmvp.h"
 #include "scc_util.h"
 
-static int SC_KCDSA_PRNG(
-					  U8		*pbSrc,
-					  U32		dSrcByteLen,	//	in Bytes
-					  U8		*pbDst,
-					  U32		dDstBitLen)		//	in Bits
-{
-	U8		Count, DigestValue[SCC_SHA256_DIGEST_SIZE];
-	U32		i;
-	SC_SHA256_CONTEXT ctx;
-
-	//
-	i = ((dDstBitLen+7) & 0xFFFFFFF8) / 8;
-	for( Count=0;  ; Count++) {
-		SC_Memzero(&ctx, 0, sizeof(SC_SHA256_CONTEXT));
-
-		SC_SHA256_Init(&ctx);
-		SC_SHA256_Update(&ctx, pbSrc, dSrcByteLen);
-		SC_SHA256_Update(&ctx, &Count, 1);
-		SC_SHA256_Final(&ctx, DigestValue);
-
-		if( i>=SCC_SHA256_DIGEST_SIZE ) {
-			i -= SCC_SHA256_DIGEST_SIZE;
-			memcpy(pbDst+i, DigestValue, SCC_SHA256_DIGEST_SIZE);
-			if( i==0 )	break;
-		}
-		else {
-			memcpy(pbDst, DigestValue+SCC_SHA256_DIGEST_SIZE-i, i);
-			break;
-		}
-	}
-
-	//
-	i = dDstBitLen & 0x07;
-	if( i )
-		pbDst[0] &= (1<<i) - 1;
-
-	//
-	return SCC_SUCCESS;
-}
-
 int 
 SC_KCDSA_CreateKeyObject(SC_KCDSA_Parameters **KCDSA_Params)
 {
@@ -162,12 +122,17 @@ int SC_KCDSA_Sign(
 		retCode = SCC_KCDSA_ERROR_INVALID_INPUTLEN;
 		goto end;
 	}	
+
+	if (SC_DIGITSIZE * KCDSA_Params->KCDSA_p.n != 256 || SC_DIGITSIZE * KCDSA_Params->KCDSA_q.n != 32)
+	{
+		retCode = SCC_KCDSA_ERROR_INVALID_KEY_LENGTH;
+		goto end;
+	}
 	
 	if(KCDSA_x->n != 8) {
 		retCode = SCC_KCDSA_ERROR_INVALID_KEY_LENGTH;
 		goto end;
 	}
-	
 	
 	//	Step 0 : KCDSA_PrivKey의 p, q, g, seed, x에 대한 메모리 할당이 적절하다고 가정.
 	DigestLen = SCC_SHA256_DIGEST_SIZE;
@@ -175,12 +140,13 @@ int SC_KCDSA_Sign(
 
 	//
 	*SignLen = DigestLen + qByteLen;
-
+genRandom:
 	//	step 0. (선택 사항) 도메인 변수 P, Q, G와 공개 검증키 Y가 올바른지 검증
 	//	step 1. 난수값 K를 [1, Q-1]에서 랜덤하게 선택한다.
 	retCode = SC_Bigint_Fill_Random(&BN_K, SC_DIGITSIZE*qByteLen);
 	if( retCode!=SCC_SUCCESS )	goto end;
 	
+
 	if( SC_Bigint_Cmp_Bignum(&BN_K, &KCDSA_Params->KCDSA_q)>=0 ) {
 		retCode = SC_Bigint_Sub_Bignum(&BN_K, &BN_K, &KCDSA_Params->KCDSA_q);
 		if( retCode!=SCC_SUCCESS )	goto end;
@@ -233,6 +199,9 @@ int SC_KCDSA_Sign(
 	retCode = SC_Big_MulMod(&KCDSA_s, KCDSA_x, &BN_K, &KCDSA_Params->KCDSA_q);						
 	if( retCode!=SCC_SUCCESS )	goto end;
 
+	if (KCDSA_s.n == 0)
+		goto genRandom;
+
 	//	step 7. 정수쌍 R, S를 서명으로 출력한다. 즉 서명 = {R, S}.
 	retCode = SC_Bigint_Write_Binary(&KCDSA_s, Signature+DigestLen, qByteLen);
 	if( retCode!=SCC_SUCCESS )	goto end;
@@ -269,13 +238,19 @@ SC_KCDSA_Verify(SC_KCDSA_Parameters *KCDSA_Params, SC_BIGINT *KCDSA_y, U8 *MsgDi
 		goto end;
 	}	
 
+	if (SC_DIGITSIZE * KCDSA_Params->KCDSA_p.n != 256 || SC_DIGITSIZE * KCDSA_Params->KCDSA_q.n != 32)
+	{
+		retCode = SCC_KCDSA_ERROR_INVALID_KEY_LENGTH;
+		goto end;
+	}
+
 	SC_Bigint_New( &BN_Tmp1 ); SC_Bigint_New( &BN_Tmp2 ); SC_Bigint_New( &BN_Tmp3 ); SC_Bigint_New( &KCDSA_s );
 	//	Step 0 : KCDSA_PubKey의 p, q, g, seed, y에 대한 메모리 할당이 적절하다고 가정.
 
 	//	
 	DigestLen = SCC_SHA256_DIGEST_SIZE;
 	qByteLen = SC_DIGITSIZE * KCDSA_Params->KCDSA_q.n;
-
+	
 	//
 	if( SignLen!=DigestLen+qByteLen ){
 		retCode = SCC_KCDSA_ERROR_INVALID_SIGNATURE_LEN;
@@ -287,8 +262,8 @@ SC_KCDSA_Verify(SC_KCDSA_Parameters *KCDSA_Params, SC_BIGINT *KCDSA_y, U8 *MsgDi
 	retCode = SC_Bigint_Read_Binary(&KCDSA_s, Signature+DigestLen, qByteLen);
 	if( retCode!=SCC_SUCCESS )	goto end;
 
-	//retCode = SCC_KCDSA_ERROR_VERIFY_FAIL;
-	//if( BN_Cmp(KCDSA_s, KCDSA_PubKey->KCDSA_q)>=0 )			goto end;
+	if( SC_Bigint_Cmp_Bignum(&KCDSA_s, &KCDSA_Params->KCDSA_q) > 0 )
+		goto end;
 
 	//	step 0. (선택 사항) 서명자의 인증서를 확인하고,
 	//			서명검증에 필요한 도메인 변수 P, Q, G와 공개 검증키 Y를 추출
@@ -330,7 +305,6 @@ SC_KCDSA_Verify(SC_KCDSA_Parameters *KCDSA_Params, SC_BIGINT *KCDSA_y, U8 *MsgDi
 	retCode = SC_Bigint_Write_Binary(&BN_Tmp1, bzTmp, i);
 	if( retCode!=SCC_SUCCESS )	goto end;
 	j = i;
-	//i = 0;
 
 	SC_Memzero(&ctx, 0, sizeof(SC_SHA256_CONTEXT));
 
@@ -338,9 +312,11 @@ SC_KCDSA_Verify(SC_KCDSA_Parameters *KCDSA_Params, SC_BIGINT *KCDSA_y, U8 *MsgDi
 	SC_SHA256_Update(&ctx, bzTmp, j);
 	SC_SHA256_Final(&ctx, bzTmp);
 
-	retCode = SCC_KCDSA_ERROR_VERIFY_FAIL;
 	if( memcmp(bzTmp, Signature, SCC_SHA256_DIGEST_SIZE)!=0 )
+  {
+	  retCode = SCC_KCDSA_ERROR_VERIFY_FAIL;
 		goto end;
+  }
 
 	retCode = SCC_SUCCESS;
 end:
